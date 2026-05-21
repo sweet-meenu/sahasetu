@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sahasetu-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://sahasetu_admin:SaahasSetu2026Secure@mongodb:27017/sahasetu?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-sahasetu_jwt_secret_key_2026_posh_act_secure_platform}
+      - JWT_EXPIRES_IN=7d
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY:-a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2}
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - upload_data:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sahasetu-network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: sahasetu-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sahasetu_admin
+      MONGO_INITDB_ROOT_PASSWORD: SaahasSetu2026Secure
+      MONGO_INITDB_DATABASE: sahasetu
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sahasetu-network
+
+  # Redis for Session Cache & Rate Limiting
+  redis:
+    image: redis:7-alpine
+    container_name: sahasetu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass SaahasSetuRedis2026
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "SaahasSetuRedis2026", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sahasetu-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  upload_data:
+    driver: local
+
+networks:
+  sahasetu-network:
+    driver: bridge

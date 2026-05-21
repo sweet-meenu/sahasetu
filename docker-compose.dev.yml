@@ -1,0 +1,53 @@
+# Dev infrastructure only — MongoDB + Redis
+# Run the Next.js app separately with: pnpm dev
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   pnpm dev
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: sahasetu-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sahasetu_admin
+      MONGO_INITDB_ROOT_PASSWORD: SaahasSetu2026Secure
+      MONGO_INITDB_DATABASE: sahasetu
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Redis for Session Cache & Rate Limiting
+  redis:
+    image: redis:7-alpine
+    container_name: sahasetu-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass SaahasSetuRedis2026
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "SaahasSetuRedis2026", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
